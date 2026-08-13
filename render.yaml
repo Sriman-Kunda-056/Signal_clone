@@ -18,7 +18,10 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGINS
-        value: https://signal-clone-smoky.vercel.app/login # update to the deployed frontend URL once it exists
+        # An Origin header is ONLY scheme://host[:port] — never a path or
+        # trailing slash. Anything more specific than the bare domain here
+        # will fail the exact-string match and silently break every request.
+        value: https://signal-clone-smoky.vercel.app
       - key: MOCK_OTP
         value: "123456"
       # Must match the Dockerfile's EXPOSE/listen port — Render's proxy
