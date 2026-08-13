@@ -1,0 +1,23 @@
+# Render Blueprint — lets you deploy this service via "New > Blueprint" on
+# the Render dashboard, pointed at this repo, instead of clicking through
+# every field by hand. Free tier: no card required, but the instance sleeps
+# after 15 min idle (cold start ~30-50s) and has no persistent disk, so the
+# SQLite file resets to the seeded demo data on every redeploy — the backend
+# already auto-reseeds on startup if the DB is empty, so this is a graceful
+# reset rather than a broken app.
+services:
+  - type: web
+    name: signal-clone-backend
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: singapore
+    healthCheckPath: /health
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: http://localhost:3000 # update to the deployed frontend URL once it exists
+      - key: MOCK_OTP
+        value: "123456"
