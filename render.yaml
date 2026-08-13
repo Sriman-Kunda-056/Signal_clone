@@ -21,3 +21,7 @@ services:
         value: http://localhost:3000 # update to the deployed frontend URL once it exists
       - key: MOCK_OTP
         value: "123456"
+      # Must match the Dockerfile's EXPOSE/listen port — Render's proxy
+      # otherwise expects its own default (10000) and never finds the app.
+      - key: PORT
+        value: "8000"
