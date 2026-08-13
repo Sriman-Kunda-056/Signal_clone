@@ -1,0 +1,195 @@
+@import "tailwindcss";
+
+/*
+ * Palette lifted from Signal Desktop's own design tokens
+ * (signalapp/Signal-Desktop → stylesheets/_variables.scss):
+ *   gray-02 #f6f6f6   gray-05 #e9e9e9   gray-15 #dedede   gray-25 #b9b9b9
+ *   gray-45 #848484   gray-60 #5e5e5e   gray-65 #4a4a4a   gray-75 #3b3b3b
+ *   gray-80 #2e2e2e   gray-85 #262626   gray-90 #1b1b1b   gray-95 #121212
+ *   ultramarine #2c6bed  (Signal's primary — used for own bubbles + actions)
+ */
+
+:root {
+  /* Light theme */
+  --color-nav-rail: #f6f6f6;
+  --color-sidebar-bg: #ffffff;
+  --color-sidebar-hover: #f0f0f0;
+  --color-sidebar-active: #e9e9e9;
+  --color-chat-bg: #ffffff;
+  --color-panel-bg: #ffffff;
+  --color-border: #dedede;
+  --color-border-strong: #c6c6c6;
+  --color-bubble-own: #2c6bed;
+  --color-bubble-own-text: #ffffff;
+  --color-bubble-own-meta: rgba(255, 255, 255, 0.7);
+  --color-bubble-other: #e9e9e9;
+  --color-bubble-other-text: #121212;
+  --color-bubble-other-meta: #5e5e5e;
+  --color-text-primary: #121212;
+  --color-text-secondary: #5e5e5e;
+  --color-text-muted: #848484;
+  --color-icon: #3b3b3b;
+  --color-accent: #2c6bed;
+  --color-accent-hover: #1851b4;
+  --color-accent-soft: #d2dffb;
+  --color-danger: #d00b0b;
+  --color-online: #22c55e;
+  --color-unread-badge: #2c6bed;
+  --color-input-bg: #f0f0f0;
+  --color-scrollbar: #c6c6c6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-nav-rail: #1b1b1b;
+    --color-sidebar-bg: #1b1b1b;
+    --color-sidebar-hover: #2e2e2e;
+    --color-sidebar-active: #3b3b3b;
+    --color-chat-bg: #121212;
+    --color-panel-bg: #1b1b1b;
+    --color-border: #2e2e2e;
+    --color-border-strong: #3b3b3b;
+    --color-bubble-own: #2c6bed;
+    --color-bubble-own-text: #ffffff;
+    --color-bubble-own-meta: rgba(255, 255, 255, 0.7);
+    --color-bubble-other: #2e2e2e;
+    --color-bubble-other-text: #f6f6f6;
+    --color-bubble-other-meta: #b9b9b9;
+    --color-text-primary: #f6f6f6;
+    --color-text-secondary: #b9b9b9;
+    --color-text-muted: #848484;
+    --color-icon: #dedede;
+    --color-accent: #2c6bed;
+    --color-accent-hover: #6191f3;
+    --color-accent-soft: #1851b4;
+    --color-danger: #ff6b6b;
+    --color-online: #22c55e;
+    --color-unread-badge: #2c6bed;
+    --color-input-bg: #2e2e2e;
+    --color-scrollbar: #4a4a4a;
+  }
+}
+
+:root[data-theme="dark"] {
+  --color-nav-rail: #1b1b1b;
+  --color-sidebar-bg: #1b1b1b;
+  --color-sidebar-hover: #2e2e2e;
+  --color-sidebar-active: #3b3b3b;
+  --color-chat-bg: #121212;
+  --color-panel-bg: #1b1b1b;
+  --color-border: #2e2e2e;
+  --color-border-strong: #3b3b3b;
+  --color-bubble-own: #2c6bed;
+  --color-bubble-own-text: #ffffff;
+  --color-bubble-own-meta: rgba(255, 255, 255, 0.7);
+  --color-bubble-other: #2e2e2e;
+  --color-bubble-other-text: #f6f6f6;
+  --color-bubble-other-meta: #b9b9b9;
+  --color-text-primary: #f6f6f6;
+  --color-text-secondary: #b9b9b9;
+  --color-text-muted: #848484;
+  --color-icon: #dedede;
+  --color-accent: #2c6bed;
+  --color-accent-hover: #6191f3;
+  --color-accent-soft: #1851b4;
+  --color-danger: #ff6b6b;
+  --color-online: #22c55e;
+  --color-unread-badge: #2c6bed;
+  --color-input-bg: #2e2e2e;
+  --color-scrollbar: #4a4a4a;
+}
+
+@theme inline {
+  --color-nav-rail: var(--color-nav-rail);
+  --color-sidebar-bg: var(--color-sidebar-bg);
+  --color-sidebar-hover: var(--color-sidebar-hover);
+  --color-sidebar-active: var(--color-sidebar-active);
+  --color-chat-bg: var(--color-chat-bg);
+  --color-panel-bg: var(--color-panel-bg);
+  --color-border: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+  --color-bubble-own: var(--color-bubble-own);
+  --color-bubble-own-text: var(--color-bubble-own-text);
+  --color-bubble-other: var(--color-bubble-other);
+  --color-bubble-other-text: var(--color-bubble-other-text);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-muted);
+  --color-icon: var(--color-icon);
+  --color-accent: var(--color-accent);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-danger: var(--color-danger);
+  --color-online: var(--color-online);
+  --color-unread-badge: var(--color-unread-badge);
+  --color-input-bg: var(--color-input-bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--color-chat-bg);
+  color: var(--color-text-primary);
+  /* Signal Desktop ships Inter; these are the closest system stand-ins so the
+     app keeps its typographic feel without a blocked webfont request. */
+  font-family:
+    Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-scrollbar);
+  border-radius: 9999px;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.15s ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-toast-in {
+  animation: toast-in 0.2s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up,
+  .animate-toast-in {
+    animation: none;
+  }
+}

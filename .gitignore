@@ -1,0 +1,9 @@
+# Local reference/scratch material — not part of the delivered app.
+/uiux/
+/assessment.ipynb
+/Scaler_SDE_Fullstack_Assignment_-_Signal_Clone.md
+/signal_logo.png
+
+# OS junk
+.DS_Store
+Thumbs.db
