@@ -39,7 +39,7 @@ interface ChatState {
   loadArchivedConversations: () => Promise<void>;
   loadContacts: () => Promise<void>;
   selectConversation: (id: number | null) => Promise<void>;
-  sendMessage: (conversationId: number, content: string, messageType?: "text" | "image" | "file") => Promise<void>;
+  sendMessage: (conversationId: number, content: string, messageType?: "text" | "image" | "file", replyToMessageId?: number) => Promise<void>;
   setTyping: (conversationId: number, isTyping: boolean) => void;
   createDirectConversation: (otherUserId: number) => Promise<Conversation>;
   createGroupConversation: (name: string, memberIds: number[]) => Promise<Conversation>;
@@ -50,6 +50,10 @@ interface ChatState {
   /** Moves a conversation between the main list and the Archived Chats view. */
   setArchived: (conversationId: number, archived: boolean) => Promise<void>;
   toggleReaction: (conversationId: number, messageId: number, emoji: string) => Promise<void>;
+  deleteMessage: (conversationId: number, messageId: number) => Promise<void>;
+  togglePin: (conversationId: number, messageId: number) => Promise<void>;
+  forwardMessages: (conversationId: number, messageIds: number[], targetConversationIds: number[]) => Promise<void>;
+  setDisappearing: (conversationId: number, seconds: number) => Promise<void>;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -225,21 +229,32 @@ export const useChatStore = create<ChatState>((set, get) => ({
     api.post(`/conversations/${id}/read`).catch(() => {});
   },
 
-  sendMessage: async (conversationId, content, messageType = "text") => {
-    const message = await api.post<Message>(`/conversations/${conversationId}/messages`, {
-      content,
-      message_type: messageType,
-    });
+  sendMessage: async (conversationId, content, messageType = "text", replyToMessageId) => {
+    const sender = useAuthStore.getState().user;
+    if (!sender) return;
+    const temporaryId = -Date.now();
+    const optimistic: Message = {
+      id: temporaryId, conversation_id: conversationId, sender_id: sender.id, sender, content, message_type: messageType,
+      reply_to_message_id: replyToMessageId ?? null, created_at: new Date().toISOString(), statuses: [], reactions: [],
+      deleted_at: null, is_pinned: false, is_forwarded: false, expires_at: null,
+      reply_preview: replyToMessageId ? (() => { const parent = get().messagesByConversation[conversationId]?.find((m) => m.id === replyToMessageId); return parent ? { id: parent.id, sender_name: parent.sender.display_name, content: parent.content, message_type: parent.message_type } : null; })() : null,
+      client_status: "sending",
+    };
     const state = get();
     const existing = state.messagesByConversation[conversationId] ?? [];
-    if (!existing.some((m) => m.id === message.id)) {
-      set({
-        messagesByConversation: { ...state.messagesByConversation, [conversationId]: [...existing, message] },
-      });
-    }
+    set({ messagesByConversation: { ...state.messagesByConversation, [conversationId]: [...existing, optimistic] } });
     const conv = state.conversations.find((c) => c.id === conversationId);
-    if (conv) {
-      set({ conversations: upsertConversation(get().conversations, { ...conv, last_message: message }) });
+    if (conv) set({ conversations: upsertConversation(get().conversations, { ...get().conversations.find((c) => c.id === conversationId)!, last_message: optimistic }) });
+    try {
+      const message = await api.post<Message>(`/conversations/${conversationId}/messages`, {
+        content, message_type: messageType, reply_to_message_id: replyToMessageId,
+      });
+      set({ messagesByConversation: { ...get().messagesByConversation, [conversationId]: (get().messagesByConversation[conversationId] ?? []).map((m) => m.id === temporaryId ? message : m) } });
+      const updatedConv = get().conversations.find((c) => c.id === conversationId);
+      if (updatedConv) set({ conversations: upsertConversation(get().conversations, { ...updatedConv, last_message: message }) });
+    } catch (error) {
+      set({ messagesByConversation: { ...get().messagesByConversation, [conversationId]: (get().messagesByConversation[conversationId] ?? []).map((m) => m.id === temporaryId ? { ...m, client_status: "failed" } : m) } });
+      throw error;
     }
   },
 
@@ -347,5 +362,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
       applyLocal(currentUserId ? [...others, { user_id: currentUserId, emoji }] : others);
       await api.post(`/conversations/${conversationId}/messages/${messageId}/reactions`, { emoji });
     }
+  },
+
+  deleteMessage: async (conversationId, messageId) => {
+    await api.delete(`/conversations/${conversationId}/messages/${messageId}`);
+    set({ messagesByConversation: { ...get().messagesByConversation, [conversationId]: (get().messagesByConversation[conversationId] ?? []).map((m) => m.id === messageId ? { ...m, content: "", deleted_at: new Date().toISOString(), reactions: [] } : m) } });
+  },
+
+  togglePin: async (conversationId, messageId) => {
+    const message = await api.post<Message>(`/conversations/${conversationId}/messages/${messageId}/pin`);
+    set({ messagesByConversation: { ...get().messagesByConversation, [conversationId]: (get().messagesByConversation[conversationId] ?? []).map((m) => m.id === messageId ? message : m) } });
+  },
+
+  forwardMessages: async (conversationId, messageIds, targetConversationIds) => {
+    await api.post(`/conversations/${conversationId}/messages/forward`, { message_ids: messageIds, target_conversation_ids: targetConversationIds });
+  },
+
+  setDisappearing: async (conversationId, seconds) => {
+    const conversation = await api.post<Conversation>(`/conversations/${conversationId}/disappearing`, { seconds });
+    set({ conversations: upsertConversation(get().conversations, conversation) });
   },
 }));

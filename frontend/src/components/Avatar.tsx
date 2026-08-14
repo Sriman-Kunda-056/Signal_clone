@@ -8,16 +8,20 @@ interface AvatarProps {
   size?: number;
   online?: boolean;
   isGroup?: boolean;
+  avatarUrl?: string | null;
 }
 
-export function Avatar({ id, name, size = 40, online, isGroup }: AvatarProps) {
+export function Avatar({ id, name, size = 40, online, isGroup, avatarUrl }: AvatarProps) {
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <div
         className="flex h-full w-full items-center justify-center rounded-full font-medium text-white"
         style={{ backgroundColor: colorForId(id), fontSize: size * 0.38 }}
       >
-        {isGroup ? <Users style={{ width: size * 0.5, height: size * 0.5 }} /> : initials(name)}
+        {avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- persisted data-URL avatars cannot use Next's optimizer
+          <img src={avatarUrl} alt="" className="h-full w-full rounded-full object-cover" />
+        ) : isGroup ? <Users style={{ width: size * 0.5, height: size * 0.5 }} /> : initials(name)}
       </div>
       {online !== undefined && (
         <span

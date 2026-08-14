@@ -16,9 +16,14 @@ interface MessageListProps {
   currentUser: User;
   loading: boolean;
   onOpenInfo: () => void;
+  selectedIds: Set<number>;
+  onSelectMessage: (id: number) => void;
+  onReply: (message: Message) => void;
+  onDelete: (id: number) => void;
+  onPin: (id: number) => void;
 }
 
-export function MessageList({ conversation, messages, currentUser, loading, onOpenInfo }: MessageListProps) {
+export function MessageList({ conversation, messages, currentUser, loading, onOpenInfo, selectedIds, onSelectMessage, onReply, onDelete, onPin }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -79,6 +84,13 @@ export function MessageList({ conversation, messages, currentUser, loading, onOp
               showSender={showSender}
               conversation={conversation}
               currentUserId={currentUser.id}
+              selected={selectedIds.has(message.id)}
+              selecting={selectedIds.size > 0}
+              onSelect={() => onSelectMessage(message.id)}
+              onReply={() => onReply(message)}
+              onDelete={() => onDelete(message.id)}
+              onPin={() => onPin(message.id)}
+              onCopy={() => navigator.clipboard?.writeText(message.content)}
             />
           </div>
         ))}

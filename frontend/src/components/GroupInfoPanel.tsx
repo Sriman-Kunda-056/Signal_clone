@@ -22,6 +22,7 @@ export function GroupInfoPanel({ conversation, currentUser, onlineUserIds, onClo
   const loadContacts = useChatStore((s) => s.loadContacts);
   const addMembers = useChatStore((s) => s.addMembers);
   const removeMember = useChatStore((s) => s.removeMember);
+  const setDisappearing = useChatStore((s) => s.setDisappearing);
   const pushToast = useToastStore((s) => s.push);
 
   const [showAddPicker, setShowAddPicker] = useState(false);
@@ -62,6 +63,14 @@ export function GroupInfoPanel({ conversation, currentUser, onlineUserIds, onClo
     }
   }
 
+  async function handleTimer(seconds: number) {
+    try {
+      await setDisappearing(conversation.id, seconds);
+    } catch {
+      pushToast("Couldn't update timer", "Please try again.");
+    }
+  }
+
   return (
     // Below `lg` there's no room for a third column, so this becomes a
     // full-screen overlay instead of silently doing nothing when opened
@@ -91,6 +100,14 @@ export function GroupInfoPanel({ conversation, currentUser, onlineUserIds, onClo
               @{other.user.username} · {onlineUserIds.has(other.user.id) ? "Online" : relativeLastSeen(other.user.last_seen_at)}
             </p>
           )}
+        </div>
+
+        <div className="mb-5 rounded-lg border p-3" style={{ borderColor: "var(--color-border)" }}>
+          <p className="text-sm font-medium" style={{ color: "var(--color-text-primary)" }}>Disappearing messages</p>
+          <p className="mb-2 text-xs" style={{ color: "var(--color-text-muted)" }}>New messages disappear after the selected time.</p>
+          <select value={conversation.disappearing_seconds} onChange={(event) => handleTimer(Number(event.target.value))} className="w-full rounded border px-2 py-1.5 text-sm" style={{ borderColor: "var(--color-border)", background: "var(--color-input-bg)", color: "var(--color-text-primary)" }}>
+            <option value={0}>Off</option><option value={30}>30 seconds</option><option value={300}>5 minutes</option><option value={3600}>1 hour</option><option value={86400}>1 day</option><option value={604800}>1 week</option>
+          </select>
         </div>
 
         {conversation.type === "group" && (

@@ -345,6 +345,23 @@ def set_archived(
     return None
 
 
+@router.post("/{conversation_id}/disappearing", response_model=schemas.ConversationOut)
+def set_disappearing_messages(
+    conversation_id: int,
+    payload: schemas.DisappearingRequest,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _require_participant(db, conversation_id, current_user.id)
+    conversation = db.get(models.Conversation, conversation_id)
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    conversation.disappearing_seconds = payload.seconds
+    db.commit()
+    db.refresh(conversation)
+    return _serialize_conversation(db, conversation, current_user.id)
+
+
 @router.post("/{conversation_id}/members", response_model=schemas.ConversationOut)
 def add_members(
     conversation_id: int,

@@ -18,6 +18,7 @@ interface AuthState {
   ) => Promise<void>;
   logout: () => void;
   setHydrated: () => void;
+  updateProfile: (data: { display_name?: string; avatar_url?: string }) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -49,6 +50,11 @@ export const useAuthStore = create<AuthState>()(
 
       setHydrated() {
         set({ hydrated: true });
+      },
+
+      async updateProfile(data) {
+        const user = await api.patch<User>("/auth/me", data);
+        set({ user });
       },
     }),
     {

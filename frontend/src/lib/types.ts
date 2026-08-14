@@ -1,7 +1,7 @@
 export type ConversationType = "direct" | "group";
 export type ParticipantRole = "admin" | "member";
 export type MessageType = "text" | "image" | "file";
-export type MessageStatusValue = "sent" | "delivered" | "read";
+export type MessageStatusValue = "sending" | "sent" | "delivered" | "read";
 // Mirrors backend ParticipantRequestStatus — drives the message-request UI
 // (Accept/Block/Delete banner vs. a normal composer).
 export type RequestStatus = "accepted" | "pending" | "blocked";
@@ -43,6 +43,12 @@ export interface Message {
   created_at: string;
   statuses: MessageStatus[];
   reactions: Reaction[];
+  deleted_at: string | null;
+  is_pinned: boolean;
+  is_forwarded: boolean;
+  expires_at: string | null;
+  reply_preview: { id: number; sender_name: string; content: string; message_type: MessageType } | null;
+  client_status?: "sending" | "failed";
 }
 
 export interface Participant {
@@ -71,6 +77,7 @@ export interface Conversation {
   awaiting_their_response: boolean;
   // Per-user archive shelf — independent of my_status/awaiting_their_response.
   is_archived: boolean;
+  disappearing_seconds: number;
 }
 
 export interface Contact {

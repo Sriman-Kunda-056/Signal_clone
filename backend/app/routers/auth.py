@@ -25,6 +25,7 @@ def register(payload: schemas.RegisterRequest, db: Session = Depends(get_db)):
         username=payload.username,
         phone_number=payload.phone_number,
         display_name=payload.display_name,
+        avatar_url=payload.avatar_url,
         password_hash=hash_password(payload.password),
     )
     db.add(user)
@@ -47,4 +48,22 @@ def login(payload: schemas.LoginRequest, db: Session = Depends(get_db)):
 
 @router.get("/me", response_model=schemas.UserOut)
 def me(current_user: models.User = Depends(get_current_user)):
+    return current_user
+
+
+@router.patch("/me", response_model=schemas.UserOut)
+def update_profile(
+    payload: schemas.ProfileUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Partial update — only fields actually present in the request body are
+    touched, so sending just an avatar doesn't blank out the display name."""
+    fields = payload.model_dump(exclude_unset=True)
+    if "display_name" in fields and fields["display_name"]:
+        current_user.display_name = fields["display_name"]
+    if "avatar_url" in fields:
+        current_user.avatar_url = fields["avatar_url"]
+    db.commit()
+    db.refresh(current_user)
     return current_user

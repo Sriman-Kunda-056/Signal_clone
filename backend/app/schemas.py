@@ -16,6 +16,14 @@ class RegisterRequest(BaseModel):
     display_name: str
     password: str
     otp: str
+    # Optional base64 data URL, same storage approach as attachments (see
+    # lib/attachments.ts) — compressed to a small square client-side.
+    avatar_url: Optional[str] = Field(default=None, max_length=1_500_000)
+
+
+class ProfileUpdate(BaseModel):
+    display_name: Optional[str] = None
+    avatar_url: Optional[str] = Field(default=None, max_length=1_500_000)
 
 
 class LoginRequest(BaseModel):
@@ -64,6 +72,21 @@ class MessageCreate(BaseModel):
     content: str = Field(max_length=3_000_000)
     message_type: MessageType = MessageType.text
     reply_to_message_id: Optional[int] = None
+    is_forwarded: bool = False
+
+
+class ForwardRequest(BaseModel):
+    """Copies existing messages into other conversations. Sends ids rather
+    than raw content so the server re-reads the originals — a client can't
+    use this to inject arbitrary content attributed to a forward."""
+
+    message_ids: List[int]
+    target_conversation_ids: List[int]
+
+
+class DisappearingRequest(BaseModel):
+    # 0 disables; otherwise seconds until a newly sent message expires.
+    seconds: int = Field(ge=0, le=60 * 60 * 24 * 7)
 
 
 class MessageStatusOut(BaseModel):
@@ -102,6 +125,23 @@ class MessageOut(BaseModel):
     created_at: datetime.datetime
     statuses: List[MessageStatusOut] = []
     reactions: List[ReactionOut] = []
+    # Tombstone marker for "Delete for everyone" — the row survives so the
+    # client can render "This message was deleted" in place.
+    deleted_at: Optional[datetime.datetime] = None
+    is_pinned: bool = False
+    is_forwarded: bool = False
+    expires_at: Optional[datetime.datetime] = None
+    # Minimal preview of the message being replied to, denormalized here so
+    # the client can render the quote without a second fetch or holding the
+    # entire (possibly paged-out) parent message in memory.
+    reply_preview: Optional["ReplyPreview"] = None
+
+
+class ReplyPreview(BaseModel):
+    id: int
+    sender_name: str
+    content: str
+    message_type: MessageType
 
 
 # ---------- Conversations ----------
@@ -147,6 +187,8 @@ class ConversationOut(BaseModel):
     # The caller's own archive state for this conversation — independent of
     # my_status/awaiting_their_response above.
     is_archived: bool = False
+    # Disappearing-messages timer in seconds; 0 = off.
+    disappearing_seconds: int = 0
 
 
 class AddMembersRequest(BaseModel):

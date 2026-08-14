@@ -172,10 +172,11 @@ export default function HomePage() {
                 loadingMessages={loadingMessages}
                 onlineUserIds={onlineUserIds}
                 typingUserIds={typingUserIds}
-                onSend={(content) => sendMessage(activeConversation.id, content)}
+                onSend={(content, replyToMessageId) => sendMessage(activeConversation.id, content, "text", replyToMessageId)}
                 onSendAttachment={(dataUrl, type) => sendMessage(activeConversation.id, dataUrl, type)}
                 onTyping={(isTyping) => setTyping(activeConversation.id, isTyping)}
                 onOpenInfo={() => setShowInfo((v) => !v)}
+                conversations={conversations}
               />
             </div>
             {showInfo && (

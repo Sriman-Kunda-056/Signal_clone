@@ -1,12 +1,15 @@
 "use client";
 
-import { ArrowLeft, Bell, Lock, Moon, Palette, ShieldAlert, Sun } from "lucide-react";
+import { ArrowLeft, Bell, Lock, Moon, Palette, ShieldAlert, Sun, Upload, MonitorSmartphone } from "lucide-react";
 import Link from "next/link";
+import { useRef, useState } from "react";
 
 import { Avatar } from "@/components/Avatar";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { usePrivacyStore } from "@/store/privacyStore";
 import { useThemeStore } from "@/store/themeStore";
+import { prepareAttachment } from "@/lib/attachments";
+import { useAuthStore } from "@/store/authStore";
 
 export default function SettingsPage() {
   const { user, ready } = useRequireAuth();
@@ -14,6 +17,19 @@ export default function SettingsPage() {
   const toggle = useThemeStore((s) => s.toggle);
   const screenPrivacyEnabled = usePrivacyStore((s) => s.screenPrivacyEnabled);
   const togglePrivacy = usePrivacyStore((s) => s.toggle);
+  const updateProfile = useAuthStore((s) => s.updateProfile);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  async function uploadAvatar(file: File | undefined) {
+    if (!file) return;
+    setUploading(true);
+    try {
+      const prepared = await prepareAttachment(file);
+      if (prepared.type !== "image") return;
+      await updateProfile({ avatar_url: prepared.dataUrl });
+    } finally { setUploading(false); }
+  }
 
   if (!ready || !user) {
     return (
@@ -41,7 +57,7 @@ export default function SettingsPage() {
           className="mb-6 flex items-center gap-4 rounded-xl border p-4"
           style={{ borderColor: "var(--color-border)", background: "var(--color-panel-bg)" }}
         >
-          <Avatar id={user.id} name={user.display_name} size={56} />
+          <Avatar id={user.id} name={user.display_name} size={56} avatarUrl={user.avatar_url} />
           <div>
             <p className="text-base font-semibold" style={{ color: "var(--color-text-primary)" }}>
               {user.display_name}
@@ -50,6 +66,8 @@ export default function SettingsPage() {
               @{user.username}
             </p>
           </div>
+          <input ref={fileInput} type="file" accept="image/*" className="hidden" onChange={(e) => uploadAvatar(e.target.files?.[0])} />
+          <button onClick={() => fileInput.current?.click()} disabled={uploading} className="ml-auto flex items-center gap-1 rounded border px-2 py-1 text-xs disabled:opacity-50" style={{ borderColor: "var(--color-border)", color: "var(--color-text-primary)" }}><Upload className="h-3.5 w-3.5" />{uploading ? "Uploading…" : "Change photo"}</button>
         </div>
 
         <SettingsSection icon={<Palette className="h-4 w-4" />} title="Appearance">
@@ -97,6 +115,10 @@ export default function SettingsPage() {
               capture detection) that make Signal&apos;s real screenshot protection actually reliable.
             </p>
           </div>
+        </SettingsSection>
+
+        <SettingsSection icon={<MonitorSmartphone className="h-4 w-4" />} title="Devices">
+          <ComingSoonRow label="Linked devices" note="Desktop and tablet linking will be available in a future release." />
         </SettingsSection>
 
         <SettingsSection icon={<Bell className="h-4 w-4" />} title="Notifications">

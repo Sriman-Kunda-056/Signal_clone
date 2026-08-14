@@ -111,6 +111,10 @@ class Conversation(Base):
     avatar_url = Column(String(512), nullable=True)  # group only
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=utcnow, nullable=False)
+    # Disappearing-messages timer in seconds, applied to newly sent messages
+    # only (changing it never retroactively expires existing ones — same as
+    # Signal). 0 = off.
+    disappearing_seconds = Column(Integer, default=0, nullable=False)
 
     participants = relationship(
         "ConversationParticipant", back_populates="conversation", cascade="all, delete-orphan"
@@ -158,6 +162,18 @@ class Message(Base):
     message_type = Column(Enum(MessageType), default=MessageType.text, nullable=False)
     reply_to_message_id = Column(Integer, ForeignKey("messages.id"), nullable=True)
     created_at = Column(DateTime, default=utcnow, nullable=False, index=True)
+    # Soft delete ("Delete for everyone"): the row stays so the tombstone can
+    # render in-place for all participants, exactly like Signal, rather than
+    # a message silently vanishing mid-thread.
+    deleted_at = Column(DateTime, nullable=True)
+    is_pinned = Column(Boolean, default=False, nullable=False)
+    # Set when the message was forwarded from another chat — Signal shows a
+    # small "Forwarded" label rather than passing it off as original.
+    is_forwarded = Column(Boolean, default=False, nullable=False)
+    # Disappearing messages: absolute expiry stamped at send time from the
+    # conversation's timer. Null = never expires. Filtered server-side on
+    # read so an expired message can't be fetched even via direct API call.
+    expires_at = Column(DateTime, nullable=True)
 
     conversation = relationship("Conversation", back_populates="messages")
     sender = relationship("User", back_populates="sent_messages")
