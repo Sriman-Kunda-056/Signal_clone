@@ -1,10 +1,47 @@
-# Signal Clone
+# Signal Clone — Real-Time Messaging Platform
 
-A functional clone of Signal's messaging app — real-time one-on-one and group chat, message requests (Accept/Block/Delete), typing indicators, read receipts, presence, image/file attachments, and emoji reactions — built for the Scaler SDE Fullstack assignment.
+Signal Clone is a full-stack messaging application built for the Scaler SDE
+Fullstack assignment. It supports private and group conversations, message
+requests, live delivery/read state, reactions, attachments, replies, forwarding,
+disappearing messages, and responsive Signal-inspired UI.
 
-**Live demo:** https://signal-clone-smoky.vercel.app
-**Backend API:** https://signal-clone-backend-hoah.onrender.com
-**Repo:** https://github.com/Sriman-Kunda-056/Signal_clone
+![Frontend](https://img.shields.io/badge/frontend-Next.js_16-2563eb)
+![Backend](https://img.shields.io/badge/backend-FastAPI-009688)
+![Realtime](https://img.shields.io/badge/realtime-WebSockets-7c3aed)
+![Database](https://img.shields.io/badge/database-SQLite-0ea5e9)
+![Status](https://img.shields.io/badge/status-live_demo-2ea44f)
+
+[Live demo](https://signal-clone-smoky.vercel.app) · [Backend health](https://signal-clone-backend-hoah.onrender.com/health) · [Repository](https://github.com/Sriman-Kunda-056/Signal_clone)
+
+## Evidence at a glance
+
+| Capability | Included |
+| --- | :---: |
+| Real-time WebSocket events | Yes |
+| Authentication flow | Phone + mocked OTP + JWT |
+| Direct and group chat | Yes |
+| Message actions | Reply, forward, pin, delete, copy, select |
+| Attachments and avatars | Base64-backed image/file uploads |
+| Deployment | Vercel frontend + Render backend |
+
+## Preview
+
+```mermaid
+flowchart LR
+    U["Authenticated user"] --> UI["Next.js messaging UI"]
+    UI --> REST["FastAPI REST API"]
+    UI <--> WS["JWT WebSocket connection"]
+    REST --> DB[("SQLite")]
+    REST --> WS
+    WS --> P["Presence, typing, delivery, read, reactions"]
+```
+
+## What it does
+
+The application keeps REST as the persistent source of truth and uses a
+JWT-authenticated WebSocket connection for live message, typing, presence,
+reaction, and receipt updates.
+
 
 ## Tech stack
 
@@ -29,6 +66,11 @@ A functional clone of Signal's messaging app — real-time one-on-one and group 
 - **Signal-accurate UI** — left icon rail (Chats/Calls/Stories, collapsible, with a bottom tab bar on mobile), Signal's actual color tokens, timestamp-in-bubble layout, dark/light theme, responsive across mobile/tablet/desktop.
 - **Placeholders** — voice/video calls, Stories, linked devices are "Coming soon" rather than silently missing.
 - **Screen privacy** — a real, toggleable, best-effort reaction to PrintScreen/window-blur (see [Assumptions](#assumptions--design-notes) for the honest limits of what a website can actually do here).
+
+- **Message actions** — reply with quoted previews, forward to another conversation, pin/unpin, copy, delete your own messages, and multi-select for bulk forwarding.
+- **Disappearing messages** — a per-conversation timer applies to newly sent messages; expired messages are filtered server-side.
+- **Profile avatars** — choose and upload a profile photo from Settings; it is compressed and persisted with the account.
+- **Optimistic sending** — outgoing messages render immediately with a Sending/Failed state while the API confirms delivery.
 
 ## Architecture
 
