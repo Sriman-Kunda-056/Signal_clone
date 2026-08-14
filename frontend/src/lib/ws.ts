@@ -1,4 +1,4 @@
-import type { Message, MessageStatusValue } from "./types";
+import type { Message, MessageStatusValue, Reaction } from "./types";
 
 export const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8000/ws";
 
@@ -19,6 +19,10 @@ export type WsEvent =
   // list" nudge, since a merge on the sender's side can also change what
   // the recipient's own list looks like.
   | { type: "conversation_updated" }
+  // Full replacement of a message's reaction list — simpler and less
+  // error-prone than diffing add/remove events client-side, and the list is
+  // always small (one reaction per participant, max).
+  | { type: "message_reaction"; conversation_id: number; message_id: number; reactions: Reaction[] }
   | { type: "pong" };
 
 type Listener = (event: WsEvent) => void;

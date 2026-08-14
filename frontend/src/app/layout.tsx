@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { PrivacyGuard } from "@/components/PrivacyGuard";
 import { ThemeInit } from "@/components/ThemeInit";
 import { ToastContainer } from "@/components/ToastContainer";
 
@@ -17,6 +18,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ThemeInit />
         {children}
         <ToastContainer />
+        <PrivacyGuard />
       </body>
     </html>
   );

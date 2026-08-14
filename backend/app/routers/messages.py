@@ -102,3 +102,87 @@ async def send_message(
         await manager.send_to_user(recipient_id, {"type": "new_message", "message": payload_json})
 
     return out
+
+
+def _active_participant_ids(db: Session, conversation_id: int) -> list[int]:
+    return [
+        row[0]
+        for row in db.query(models.ConversationParticipant.user_id)
+        .filter(
+            models.ConversationParticipant.conversation_id == conversation_id,
+            models.ConversationParticipant.left_at.is_(None),
+        )
+        .all()
+    ]
+
+
+async def _broadcast_reactions(db: Session, conversation_id: int, message: models.Message, actor_id: int) -> None:
+    reactions = [{"user_id": r.user_id, "emoji": r.emoji} for r in message.reactions]
+    payload = {
+        "type": "message_reaction",
+        "conversation_id": conversation_id,
+        "message_id": message.id,
+        "reactions": reactions,
+    }
+    for participant_id in _active_participant_ids(db, conversation_id):
+        if participant_id != actor_id:
+            await manager.send_to_user(participant_id, payload)
+
+
+@router.post("/{conversation_id}/messages/{message_id}/reactions", status_code=204)
+async def add_reaction(
+    conversation_id: int,
+    message_id: int,
+    payload: schemas.ReactionCreate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _require_participant(db, conversation_id, current_user.id)
+    message = db.get(models.Message, message_id)
+    if message is None or message.conversation_id != conversation_id:
+        raise HTTPException(status_code=404, detail="Message not found")
+
+    # One reaction per person per message — reacting again (even with a
+    # different emoji) replaces the old one rather than stacking, matching
+    # Signal's real behavior. The unique constraint on (message_id, user_id)
+    # is what makes "delete then insert" safe here.
+    existing = (
+        db.query(models.MessageReaction)
+        .filter(models.MessageReaction.message_id == message_id, models.MessageReaction.user_id == current_user.id)
+        .first()
+    )
+    if existing is not None:
+        existing.emoji = payload.emoji
+    else:
+        db.add(models.MessageReaction(message_id=message_id, user_id=current_user.id, emoji=payload.emoji))
+    db.commit()
+    db.refresh(message)
+
+    await _broadcast_reactions(db, conversation_id, message, current_user.id)
+    return None
+
+
+@router.delete("/{conversation_id}/messages/{message_id}/reactions", status_code=204)
+async def remove_reaction(
+    conversation_id: int,
+    message_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _require_participant(db, conversation_id, current_user.id)
+    message = db.get(models.Message, message_id)
+    if message is None or message.conversation_id != conversation_id:
+        raise HTTPException(status_code=404, detail="Message not found")
+
+    existing = (
+        db.query(models.MessageReaction)
+        .filter(models.MessageReaction.message_id == message_id, models.MessageReaction.user_id == current_user.id)
+        .first()
+    )
+    if existing is not None:
+        db.delete(existing)
+        db.commit()
+        db.refresh(message)
+
+    await _broadcast_reactions(db, conversation_id, message, current_user.id)
+    return None

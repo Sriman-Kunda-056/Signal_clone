@@ -1,20 +1,24 @@
 "use client";
 
-import { Mic, Plus, SendHorizontal, Smile } from "lucide-react";
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { Loader2, Mic, Plus, SendHorizontal, Smile } from "lucide-react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent } from "react";
 
+import { AttachmentTooLargeError, prepareAttachment } from "@/lib/attachments";
 import { useToastStore } from "@/store/toastStore";
 
 interface MessageInputProps {
   onSend: (content: string) => void;
+  onSendAttachment: (dataUrl: string, type: "image" | "file") => void;
   onTyping: (isTyping: boolean) => void;
 }
 
-export function MessageInput({ onSend, onTyping }: MessageInputProps) {
+export function MessageInput({ onSend, onSendAttachment, onTyping }: MessageInputProps) {
   const [value, setValue] = useState("");
+  const [uploading, setUploading] = useState(false);
   const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const pushToast = useToastStore((s) => s.push);
 
   useEffect(() => {
@@ -68,6 +72,23 @@ export function MessageInput({ onSend, onTyping }: MessageInputProps) {
     }
   }
 
+  async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow picking the same file again later
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const { dataUrl, type } = await prepareAttachment(file);
+      onSendAttachment(dataUrl, type);
+    } catch (err) {
+      const message = err instanceof AttachmentTooLargeError ? err.message : "Couldn't send that attachment.";
+      pushToast("Attachment failed", message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
   const hasText = value.trim().length > 0;
 
   return (
@@ -100,13 +121,25 @@ export function MessageInput({ onSend, onTyping }: MessageInputProps) {
           className="max-h-32 flex-1 resize-none bg-transparent py-1.5 text-[14.5px] outline-none placeholder:text-[var(--color-text-muted)]"
           style={{ color: "var(--color-text-primary)" }}
         />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,.pdf,.doc,.docx,.txt,.zip"
+          onChange={handleFileChange}
+          className="hidden"
+        />
         <button
           type="button"
-          onClick={() => pushToast("Attachments", "This feature is coming soon.")}
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
           aria-label="Add attachment"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-[var(--color-sidebar-hover)]"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-[var(--color-sidebar-hover)] disabled:opacity-50"
         >
-          <Plus className="h-[18px] w-[18px]" style={{ color: "var(--color-icon)" }} />
+          {uploading ? (
+            <Loader2 className="h-[18px] w-[18px] animate-spin" style={{ color: "var(--color-icon)" }} />
+          ) : (
+            <Plus className="h-[18px] w-[18px]" style={{ color: "var(--color-icon)" }} />
+          )}
         </button>
       </div>
 

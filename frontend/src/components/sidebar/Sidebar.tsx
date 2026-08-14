@@ -1,6 +1,7 @@
 "use client";
 
-import { ListFilter, Menu, MoreHorizontal, Search, SquarePen } from "lucide-react";
+import { Archive, Bell, FolderPlus, ListFilter, Menu, MoreHorizontal, Search, SquarePen, User as UserIcon } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 
 import { ConversationListItem } from "@/components/sidebar/ConversationListItem";
@@ -8,6 +9,7 @@ import { useOnClickOutside } from "@/hooks/useOnClickOutside";
 import { conversationDisplayName } from "@/lib/conversation";
 import type { Conversation, User } from "@/lib/types";
 import { sortConversations } from "@/store/chatStore";
+import { useToastStore } from "@/store/toastStore";
 
 interface SidebarProps {
   currentUser: User;
@@ -16,6 +18,8 @@ interface SidebarProps {
   onlineUserIds: Set<number>;
   onSelect: (id: number) => void;
   onNewChat: () => void;
+  onOpenArchived: () => void;
+  onArchive: (conversationId: number) => void;
   /** Toggles the left nav rail (Chats/Calls/Stories) open/collapsed — the
    * hamburger button that sits beside "Chats", mirroring Signal Desktop's
    * "Hide Tabs" control. */
@@ -34,6 +38,8 @@ export function Sidebar({
   onlineUserIds,
   onSelect,
   onNewChat,
+  onOpenArchived,
+  onArchive,
   onToggleNavRail,
 }: SidebarProps) {
   const [query, setQuery] = useState("");
@@ -41,6 +47,7 @@ export function Sidebar({
   const [overflowOpen, setOverflowOpen] = useState(false);
   const overflowRef = useRef<HTMLDivElement>(null);
   useOnClickOutside(overflowRef, () => setOverflowOpen(false));
+  const pushToast = useToastStore((s) => s.push);
 
   const filtered = useMemo(() => {
     let list = sortConversations(conversations);
@@ -88,7 +95,7 @@ export function Sidebar({
             </button>
             {overflowOpen && (
               <div
-                className="absolute top-10 right-0 z-30 w-52 overflow-hidden rounded-lg border shadow-xl"
+                className="absolute top-10 right-0 z-30 w-56 overflow-hidden rounded-lg border py-1 shadow-xl"
                 style={{ background: "var(--color-panel-bg)", borderColor: "var(--color-border)" }}
               >
                 <button
@@ -96,11 +103,53 @@ export function Sidebar({
                     setUnreadOnly((v) => !v);
                     setOverflowOpen(false);
                   }}
-                  className="w-full px-3 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-sidebar-hover)]"
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-[var(--color-sidebar-hover)]"
                   style={{ color: "var(--color-text-primary)" }}
                 >
+                  <ListFilter className="h-4 w-4" style={{ color: "var(--color-icon)" }} />
                   {unreadOnly ? "Show all chats" : "Filter by unread"}
                 </button>
+                <button
+                  onClick={() => {
+                    setOverflowOpen(false);
+                    onOpenArchived();
+                  }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-[var(--color-sidebar-hover)]"
+                  style={{ color: "var(--color-text-primary)" }}
+                >
+                  <Archive className="h-4 w-4" style={{ color: "var(--color-icon)" }} />
+                  Archived Chats
+                </button>
+                <button
+                  onClick={() => {
+                    setOverflowOpen(false);
+                    pushToast("Chat folders", "This feature is coming soon.");
+                  }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-[var(--color-sidebar-hover)]"
+                  style={{ color: "var(--color-text-primary)" }}
+                >
+                  <FolderPlus className="h-4 w-4" style={{ color: "var(--color-icon)" }} />
+                  Add Chat Folder
+                </button>
+                <div className="my-1 border-t" style={{ borderColor: "var(--color-border)" }} />
+                <Link
+                  href="/settings"
+                  onClick={() => setOverflowOpen(false)}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-[var(--color-sidebar-hover)]"
+                  style={{ color: "var(--color-text-primary)" }}
+                >
+                  <Bell className="h-4 w-4" style={{ color: "var(--color-icon)" }} />
+                  Notifications
+                </Link>
+                <Link
+                  href="/settings"
+                  onClick={() => setOverflowOpen(false)}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-[var(--color-sidebar-hover)]"
+                  style={{ color: "var(--color-text-primary)" }}
+                >
+                  <UserIcon className="h-4 w-4" style={{ color: "var(--color-icon)" }} />
+                  Profile
+                </Link>
               </div>
             )}
           </div>
@@ -154,6 +203,7 @@ export function Sidebar({
                 isActive={conversation.id === activeConversationId}
                 isOnline={other ? onlineUserIds.has(other.user.id) : false}
                 onSelect={() => onSelect(conversation.id)}
+                onArchive={() => onArchive(conversation.id)}
               />
             );
           })

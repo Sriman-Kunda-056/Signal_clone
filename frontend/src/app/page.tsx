@@ -7,8 +7,10 @@ import { ChatPane } from "@/components/chat/ChatPane";
 import { EmptyState } from "@/components/chat/EmptyState";
 import { GroupInfoPanel } from "@/components/GroupInfoPanel";
 import { NewGroupModal } from "@/components/modals/NewGroupModal";
+import { MobileTabBar } from "@/components/nav/MobileTabBar";
 import { NavRail, type NavView } from "@/components/nav/NavRail";
 import { PlaceholderPanel } from "@/components/nav/PlaceholderPanel";
+import { ArchivedChatsPanel } from "@/components/sidebar/ArchivedChatsPanel";
 import { NewChatPanel } from "@/components/sidebar/NewChatPanel";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
@@ -39,8 +41,11 @@ export default function HomePage() {
 
   const pushToast = useToastStore((s) => s.push);
 
+  const setArchived = useChatStore((s) => s.setArchived);
+
   const [navView, setNavView] = useState<NavView>("chats");
   const [showNewChat, setShowNewChat] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [showNewGroup, setShowNewGroup] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [mobileShowChat, setMobileShowChat] = useState(false);
@@ -107,31 +112,46 @@ export default function HomePage() {
       )}
 
       {/* Second column: chat list, the New chat panel that replaces it, or a
-          placeholder for the mocked nav destinations. */}
-      <div className={`h-full w-full md:w-auto ${mobileShowChat ? "hidden md:flex" : "flex"}`}>
-        {navView !== "chats" ? (
-          <PlaceholderPanel view={navView} onToggleNavRail={() => setNavRailVisible((v) => !v)} />
-        ) : showNewChat ? (
-          <NewChatPanel
-            conversations={conversations}
-            onClose={() => setShowNewChat(false)}
-            onOpenConversation={handleSelect}
-            onNewGroup={() => {
-              setShowNewChat(false);
-              setShowNewGroup(true);
-            }}
-          />
-        ) : (
-          <Sidebar
-            currentUser={user}
-            conversations={conversations}
-            activeConversationId={activeConversationId}
-            onlineUserIds={onlineUserIds}
-            onSelect={handleSelect}
-            onNewChat={() => setShowNewChat(true)}
-            onToggleNavRail={() => setNavRailVisible((v) => !v)}
-          />
-        )}
+          placeholder for the mocked nav destinations. Bottom tab bar is the
+          mobile equivalent of the (md-and-up-only) NavRail. */}
+      <div className={`h-full w-full flex-col md:w-auto ${mobileShowChat ? "hidden md:flex" : "flex"}`}>
+        <div className="min-h-0 flex-1">
+          {navView !== "chats" ? (
+            <PlaceholderPanel view={navView} onToggleNavRail={() => setNavRailVisible((v) => !v)} />
+          ) : showNewChat ? (
+            <NewChatPanel
+              conversations={conversations}
+              onClose={() => setShowNewChat(false)}
+              onOpenConversation={handleSelect}
+              onNewGroup={() => {
+                setShowNewChat(false);
+                setShowNewGroup(true);
+              }}
+            />
+          ) : showArchived ? (
+            <ArchivedChatsPanel
+              currentUser={user}
+              onClose={() => setShowArchived(false)}
+              onOpenConversation={(id) => {
+                setShowArchived(false);
+                handleSelect(id);
+              }}
+            />
+          ) : (
+            <Sidebar
+              currentUser={user}
+              conversations={conversations}
+              activeConversationId={activeConversationId}
+              onlineUserIds={onlineUserIds}
+              onSelect={handleSelect}
+              onNewChat={() => setShowNewChat(true)}
+              onOpenArchived={() => setShowArchived(true)}
+              onArchive={(id) => setArchived(id, true)}
+              onToggleNavRail={() => setNavRailVisible((v) => !v)}
+            />
+          )}
+        </div>
+        <MobileTabBar active={navView} onChange={setNavView} />
       </div>
 
       <div className={`h-full flex-1 ${mobileShowChat ? "flex" : "hidden md:flex"}`}>
@@ -153,6 +173,7 @@ export default function HomePage() {
                 onlineUserIds={onlineUserIds}
                 typingUserIds={typingUserIds}
                 onSend={(content) => sendMessage(activeConversation.id, content)}
+                onSendAttachment={(dataUrl, type) => sendMessage(activeConversation.id, dataUrl, type)}
                 onTyping={(isTyping) => setTyping(activeConversation.id, isTyping)}
                 onOpenInfo={() => setShowInfo((v) => !v)}
               />

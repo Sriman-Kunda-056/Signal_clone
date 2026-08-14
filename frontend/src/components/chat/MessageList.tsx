@@ -78,6 +78,7 @@ export function MessageList({ conversation, messages, currentUser, loading, onOp
               isOwn={message.sender_id === currentUser.id}
               showSender={showSender}
               conversation={conversation}
+              currentUserId={currentUser.id}
             />
           </div>
         ))}

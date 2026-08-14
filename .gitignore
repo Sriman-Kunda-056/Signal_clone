@@ -4,6 +4,9 @@
 /Scaler_SDE_Fullstack_Assignment_-_Signal_Clone.md
 /signal_logo.png
 
+# Local editor/tooling config
+/.claude/
+
 # OS junk
 .DS_Store
 Thumbs.db

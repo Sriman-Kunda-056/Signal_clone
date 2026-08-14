@@ -1,5 +1,19 @@
 import { format, formatDistanceToNowStrict, isToday, isYesterday } from "date-fns";
 
+import type { Message } from "./types";
+
+/** Conversation-list preview text — never the raw content for attachments
+ * (that's a base64 data URL for images, "filename|dataURL" for files). */
+export function messagePreviewText(message: Message): string {
+  if (message.message_type === "image") return "📷 Photo";
+  if (message.message_type === "file") {
+    const sep = message.content.indexOf("|");
+    const filename = sep === -1 ? "Attachment" : message.content.slice(0, sep);
+    return `📎 ${filename}`;
+  }
+  return message.content;
+}
+
 export function conversationTimestamp(iso: string): string {
   const date = new Date(iso);
   if (isToday(date)) return format(date, "h:mm a");

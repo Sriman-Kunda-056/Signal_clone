@@ -18,8 +18,12 @@ def register(payload: schemas.RegisterRequest, db: Session = Depends(get_db)):
     if db.query(models.User).filter(models.User.username == payload.username).first():
         raise HTTPException(status_code=400, detail="Username already taken")
 
+    if db.query(models.User).filter(models.User.phone_number == payload.phone_number).first():
+        raise HTTPException(status_code=400, detail="Phone number already registered")
+
     user = models.User(
         username=payload.username,
+        phone_number=payload.phone_number,
         display_name=payload.display_name,
         password_hash=hash_password(payload.password),
     )

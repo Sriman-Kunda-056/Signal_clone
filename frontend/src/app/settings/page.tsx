@@ -1,16 +1,19 @@
 "use client";
 
-import { ArrowLeft, Bell, Lock, Moon, Palette, Sun } from "lucide-react";
+import { ArrowLeft, Bell, Lock, Moon, Palette, ShieldAlert, Sun } from "lucide-react";
 import Link from "next/link";
 
 import { Avatar } from "@/components/Avatar";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { usePrivacyStore } from "@/store/privacyStore";
 import { useThemeStore } from "@/store/themeStore";
 
 export default function SettingsPage() {
   const { user, ready } = useRequireAuth();
   const theme = useThemeStore((s) => s.theme);
   const toggle = useThemeStore((s) => s.toggle);
+  const screenPrivacyEnabled = usePrivacyStore((s) => s.screenPrivacyEnabled);
+  const togglePrivacy = usePrivacyStore((s) => s.toggle);
 
   if (!ready || !user) {
     return (
@@ -74,10 +77,26 @@ export default function SettingsPage() {
           <ComingSoonRow label="Blocked contacts" />
           <ComingSoonRow label="Read receipts" />
           <ComingSoonRow label="Disappearing messages" />
-          <ComingSoonRow
-            label="Screenshot & screen security"
-            note="Signal blocks screenshots using OS-level APIs (Android FLAG_SECURE, iOS capture detection) that only a native app can call — there's no equivalent a website can hook into, so this can't be a real feature here."
-          />
+          <div className="border-b px-4 py-3 last:border-b-0" style={{ borderColor: "var(--color-border)" }}>
+            <div className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-2 text-sm" style={{ color: "var(--color-text-primary)" }}>
+                <ShieldAlert className="h-4 w-4" />
+                Screen privacy
+              </span>
+              <button
+                onClick={togglePrivacy}
+                className="flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm"
+                style={{ borderColor: "var(--color-border)", color: "var(--color-text-primary)" }}
+              >
+                {screenPrivacyEnabled ? "On" : "Off"}
+              </button>
+            </div>
+            <p className="mt-1 text-xs" style={{ color: "var(--color-text-muted)" }}>
+              When on, the app covers itself when you press PrintScreen or switch away. This is a best-effort
+              reaction, not a guarantee — a website has no access to the OS-level APIs (Android FLAG_SECURE, iOS
+              capture detection) that make Signal&apos;s real screenshot protection actually reliable.
+            </p>
+          </div>
         </SettingsSection>
 
         <SettingsSection icon={<Bell className="h-4 w-4" />} title="Notifications">

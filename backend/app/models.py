@@ -65,6 +65,10 @@ class User(Base):
 
     id = Column(Integer, primary_key=True)
     username = Column(String(64), unique=True, nullable=False, index=True)
+    # Collected as the *first* step of registration (matching Signal's real
+    # phone-first flow) even though login is still by username — see
+    # routers/auth.py.
+    phone_number = Column(String(20), unique=True, nullable=False)
     display_name = Column(String(64), nullable=False)
     avatar_url = Column(String(512), nullable=True)
     password_hash = Column(String(128), nullable=False)
@@ -134,6 +138,11 @@ class ConversationParticipant(Base):
     # — and the identity info on it — around, just excluded from this
     # person's own conversation list and from the active member list.
     left_at = Column(DateTime, nullable=True)
+    # Per-user archive state — independent of request_status (an accepted,
+    # perfectly normal conversation can still be archived) and independent
+    # of left_at (archiving isn't leaving; the conversation stays fully
+    # active, just tucked away in a separate list).
+    is_archived = Column(Boolean, default=False, nullable=False)
 
     conversation = relationship("Conversation", back_populates="participants")
     user = relationship("User")
@@ -153,6 +162,7 @@ class Message(Base):
     conversation = relationship("Conversation", back_populates="messages")
     sender = relationship("User", back_populates="sent_messages")
     statuses = relationship("MessageStatus", back_populates="message", cascade="all, delete-orphan")
+    reactions = relationship("MessageReaction", back_populates="message", cascade="all, delete-orphan")
     reply_to = relationship("Message", remote_side=[id])
 
 
@@ -171,4 +181,22 @@ class MessageStatus(Base):
     updated_at = Column(DateTime, default=utcnow, nullable=False)
 
     message = relationship("Message", back_populates="statuses")
+    user = relationship("User")
+
+
+class MessageReaction(Base):
+    """One emoji reaction per (message, user) — unique constraint means
+    reacting again with a different emoji *replaces* the old one rather than
+    stacking, matching Signal's real behavior."""
+
+    __tablename__ = "message_reactions"
+    __table_args__ = (UniqueConstraint("message_id", "user_id", name="uq_message_user_reaction"),)
+
+    id = Column(Integer, primary_key=True)
+    message_id = Column(Integer, ForeignKey("messages.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    emoji = Column(String(8), nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
+
+    message = relationship("Message", back_populates="reactions")
     user = relationship("User")

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
 import { api } from "@/lib/api";
-import type { Contact, Conversation, Message } from "@/lib/types";
+import type { Contact, Conversation, Message, Reaction } from "@/lib/types";
 import { wsClient } from "@/lib/ws";
 import { useAuthStore } from "@/store/authStore";
 
@@ -23,6 +23,7 @@ export function sortConversations(list: Conversation[]): Conversation[] {
 
 interface ChatState {
   conversations: Conversation[];
+  archivedConversations: Conversation[];
   messagesByConversation: Record<number, Message[]>;
   activeConversationId: number | null;
   typingByConversation: Record<number, number[]>;
@@ -35,9 +36,10 @@ interface ChatState {
   init: () => void;
   teardown: () => void;
   loadConversations: () => Promise<void>;
+  loadArchivedConversations: () => Promise<void>;
   loadContacts: () => Promise<void>;
   selectConversation: (id: number | null) => Promise<void>;
-  sendMessage: (conversationId: number, content: string) => Promise<void>;
+  sendMessage: (conversationId: number, content: string, messageType?: "text" | "image" | "file") => Promise<void>;
   setTyping: (conversationId: number, isTyping: boolean) => void;
   createDirectConversation: (otherUserId: number) => Promise<Conversation>;
   createGroupConversation: (name: string, memberIds: number[]) => Promise<Conversation>;
@@ -45,10 +47,14 @@ interface ChatState {
   removeMember: (conversationId: number, memberId: number) => Promise<void>;
   /** Accept / block / delete a message request (see `my_status` on Conversation). */
   respondToConversation: (conversationId: number, action: "accept" | "block" | "delete") => Promise<void>;
+  /** Moves a conversation between the main list and the Archived Chats view. */
+  setArchived: (conversationId: number, archived: boolean) => Promise<void>;
+  toggleReaction: (conversationId: number, messageId: number, emoji: string) => Promise<void>;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
   conversations: [],
+  archivedConversations: [],
   messagesByConversation: {},
   activeConversationId: null,
   typingByConversation: {},
@@ -150,6 +156,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
           get().loadContacts();
           break;
         }
+
+        case "message_reaction": {
+          const existing = state.messagesByConversation[event.conversation_id] ?? [];
+          const updated = existing.map((m) => (m.id === event.message_id ? { ...m, reactions: event.reactions } : m));
+          set({
+            messagesByConversation: { ...state.messagesByConversation, [event.conversation_id]: updated },
+          });
+          break;
+        }
       }
     });
     set({ wsUnsubscribe: unsubscribe });
@@ -159,6 +174,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     get().wsUnsubscribe?.();
     set({
       conversations: [],
+      archivedConversations: [],
       messagesByConversation: {},
       activeConversationId: null,
       typingByConversation: {},
@@ -176,6 +192,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     } finally {
       set({ loadingConversations: false });
     }
+  },
+
+  loadArchivedConversations: async () => {
+    const archivedConversations = await api.get<Conversation[]>("/conversations?archived=true");
+    set({ archivedConversations });
   },
 
   loadContacts: async () => {
@@ -204,8 +225,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     api.post(`/conversations/${id}/read`).catch(() => {});
   },
 
-  sendMessage: async (conversationId, content) => {
-    const message = await api.post<Message>(`/conversations/${conversationId}/messages`, { content });
+  sendMessage: async (conversationId, content, messageType = "text") => {
+    const message = await api.post<Message>(`/conversations/${conversationId}/messages`, {
+      content,
+      message_type: messageType,
+    });
     const state = get();
     const existing = state.messagesByConversation[conversationId] ?? [];
     if (!existing.some((m) => m.id === message.id)) {
@@ -267,6 +291,61 @@ export const useChatStore = create<ChatState>((set, get) => ({
     await get().loadContacts();
     if (action === "delete" && get().activeConversationId === conversationId) {
       set({ activeConversationId: null });
+    }
+  },
+
+  setArchived: async (conversationId, archived) => {
+    await api.post(`/conversations/${conversationId}/archive`, { archived });
+    // A conversation moves wholesale between the two lists rather than just
+    // flipping a flag in place, so both views stay accurate without a
+    // second round-trip to figure out which list it belongs in now.
+    const state = get();
+    if (archived) {
+      const conv = state.conversations.find((c) => c.id === conversationId);
+      set({
+        conversations: state.conversations.filter((c) => c.id !== conversationId),
+        archivedConversations: conv
+          ? upsertConversation(state.archivedConversations, { ...conv, is_archived: true })
+          : state.archivedConversations,
+      });
+      if (state.activeConversationId === conversationId) set({ activeConversationId: null });
+    } else {
+      const conv = state.archivedConversations.find((c) => c.id === conversationId);
+      set({
+        archivedConversations: state.archivedConversations.filter((c) => c.id !== conversationId),
+        conversations: conv ? upsertConversation(state.conversations, { ...conv, is_archived: false }) : state.conversations,
+      });
+    }
+  },
+
+  toggleReaction: async (conversationId, messageId, emoji) => {
+    const currentUserId = useAuthStore.getState().user?.id;
+    const existing = get()
+      .messagesByConversation[conversationId]
+      ?.find((m) => m.id === messageId)
+      ?.reactions.find((r) => r.user_id === currentUserId);
+
+    // Optimistic update: the WS event will confirm/correct this shortly,
+    // but reacting should feel instant rather than waiting on a round-trip.
+    const applyLocal = (reactions: Reaction[]) => {
+      const existingMsgs = get().messagesByConversation[conversationId] ?? [];
+      set({
+        messagesByConversation: {
+          ...get().messagesByConversation,
+          [conversationId]: existingMsgs.map((m) => (m.id === messageId ? { ...m, reactions } : m)),
+        },
+      });
+    };
+
+    const message = get().messagesByConversation[conversationId]?.find((m) => m.id === messageId);
+    const others = (message?.reactions ?? []).filter((r) => r.user_id !== currentUserId);
+
+    if (existing?.emoji === emoji) {
+      applyLocal(others);
+      await api.delete(`/conversations/${conversationId}/messages/${messageId}/reactions`);
+    } else {
+      applyLocal(currentUserId ? [...others, { user_id: currentUserId, emoji }] : others);
+      await api.post(`/conversations/${conversationId}/messages/${messageId}/reactions`, { emoji });
     }
   },
 }));

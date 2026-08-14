@@ -14,7 +14,7 @@ threads, which only fold into one once somebody hits Accept (see `respond`).
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
@@ -132,6 +132,7 @@ def _serialize_conversation(db: Session, conversation: models.Conversation, curr
     out.unread_count = unread_count
     out.my_status = my_status
     out.awaiting_their_response = awaiting_their_response
+    out.is_archived = participant.is_archived if participant else False
 
     if conversation.type == models.ConversationType.group:
         # Member list / admin controls should only show people still in the
@@ -145,7 +146,11 @@ def _serialize_conversation(db: Session, conversation: models.Conversation, curr
 
 
 @router.get("", response_model=List[schemas.ConversationOut])
-def list_conversations(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+def list_conversations(
+    archived: bool = Query(False),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     conversations = (
         db.query(models.Conversation)
         .join(models.ConversationParticipant)
@@ -155,6 +160,8 @@ def list_conversations(current_user: models.User = Depends(get_current_user), db
         .filter(models.ConversationParticipant.request_status != models.ParticipantRequestStatus.blocked)
         # And conversations this user has deleted/left don't show up either.
         .filter(models.ConversationParticipant.left_at.is_(None))
+        # Main list vs. Archived Chats view — same query, different filter.
+        .filter(models.ConversationParticipant.is_archived == archived)
         .options(joinedload(models.Conversation.participants).joinedload(models.ConversationParticipant.user))
         .all()
     )
@@ -319,6 +326,22 @@ async def respond_to_conversation(
     if other is not None:
         await manager.send_to_user(other.user_id, {"type": "conversation_updated"})
 
+    return None
+
+
+@router.post("/{conversation_id}/archive", status_code=204)
+def set_archived(
+    conversation_id: int,
+    payload: schemas.ArchiveRequest,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Archiving is purely a per-user shelf, unrelated to request_status or
+    left_at — the conversation stays fully active for everyone, it's just
+    hidden from this one person's main list until they unarchive it."""
+    participant = _require_participant(db, conversation_id, current_user.id)
+    participant.is_archived = payload.archived
+    db.commit()
     return None
 
 

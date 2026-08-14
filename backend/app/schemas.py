@@ -1,7 +1,7 @@
 import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from .models import ConversationType, MessageStatusEnum, MessageType, ParticipantRequestStatus, ParticipantRole
 
@@ -9,6 +9,9 @@ from .models import ConversationType, MessageStatusEnum, MessageType, Participan
 # ---------- Auth ----------
 
 class RegisterRequest(BaseModel):
+    # Collected first in the frontend's 3-step flow (phone -> OTP -> profile),
+    # matching Signal's real registration order.
+    phone_number: str
     username: str
     display_name: str
     password: str
@@ -27,6 +30,7 @@ class UserOut(BaseModel):
 
     id: int
     username: str
+    phone_number: str
     display_name: str
     avatar_url: Optional[str] = None
     is_online: bool
@@ -54,7 +58,10 @@ class ContactOut(BaseModel):
 # ---------- Messages ----------
 
 class MessageCreate(BaseModel):
-    content: str
+    # ~2MB of binary once base64-inflated — bounds attachment size (see
+    # lib/attachments.ts on the frontend, which compresses/rejects before
+    # ever reaching this). Plain text messages are nowhere near this limit.
+    content: str = Field(max_length=3_000_000)
     message_type: MessageType = MessageType.text
     reply_to_message_id: Optional[int] = None
 
@@ -64,6 +71,17 @@ class MessageStatusOut(BaseModel):
 
     user_id: int
     status: MessageStatusEnum
+
+
+class ReactionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    user_id: int
+    emoji: str
+
+
+class ReactionCreate(BaseModel):
+    emoji: str = Field(max_length=8)
 
 
 class MessageOut(BaseModel):
@@ -83,6 +101,7 @@ class MessageOut(BaseModel):
     reply_to_message_id: Optional[int]
     created_at: datetime.datetime
     statuses: List[MessageStatusOut] = []
+    reactions: List[ReactionOut] = []
 
 
 # ---------- Conversations ----------
@@ -125,6 +144,9 @@ class ConversationOut(BaseModel):
     # frontend show a subtle "awaiting response" hint on their own outgoing
     # request, without exposing anything about a block.
     awaiting_their_response: bool = False
+    # The caller's own archive state for this conversation — independent of
+    # my_status/awaiting_their_response above.
+    is_archived: bool = False
 
 
 class AddMembersRequest(BaseModel):
@@ -133,3 +155,7 @@ class AddMembersRequest(BaseModel):
 
 class RespondToConversationRequest(BaseModel):
     action: str  # "accept" | "block" | "delete" — validated in the router
+
+
+class ArchiveRequest(BaseModel):
+    archived: bool

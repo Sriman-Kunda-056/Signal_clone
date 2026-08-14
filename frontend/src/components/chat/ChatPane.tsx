@@ -14,6 +14,7 @@ interface ChatPaneProps {
   onlineUserIds: Set<number>;
   typingUserIds: number[];
   onSend: (content: string) => void;
+  onSendAttachment: (dataUrl: string, type: "image" | "file") => void;
   onTyping: (isTyping: boolean) => void;
   onOpenInfo: () => void;
 }
@@ -26,6 +27,7 @@ export function ChatPane({
   onlineUserIds,
   typingUserIds,
   onSend,
+  onSendAttachment,
   onTyping,
   onOpenInfo,
 }: ChatPaneProps) {
@@ -50,7 +52,7 @@ export function ChatPane({
       {conversation.my_status === "pending" ? (
         <MessageRequestBanner conversation={conversation} currentUser={currentUser} />
       ) : (
-        <MessageInput onSend={onSend} onTyping={onTyping} />
+        <MessageInput onSend={onSend} onSendAttachment={onSendAttachment} onTyping={onTyping} />
       )}
     </div>
   );

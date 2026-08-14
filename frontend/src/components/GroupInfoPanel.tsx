@@ -63,8 +63,12 @@ export function GroupInfoPanel({ conversation, currentUser, onlineUserIds, onClo
   }
 
   return (
+    // Below `lg` there's no room for a third column, so this becomes a
+    // full-screen overlay instead of silently doing nothing when opened
+    // (which is what happened before this responsive pass — `hidden lg:flex`
+    // meant "Info" had no visible effect at all on tablet/mobile).
     <aside
-      className="hidden h-full w-[320px] shrink-0 flex-col border-l lg:flex"
+      className="fixed inset-0 z-40 flex h-full w-full flex-col border-l lg:static lg:z-auto lg:w-[320px] lg:shrink-0"
       style={{ background: "var(--color-sidebar-bg)", borderColor: "var(--color-border)" }}
     >
       <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: "var(--color-border)" }}>

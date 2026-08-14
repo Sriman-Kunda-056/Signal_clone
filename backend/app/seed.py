@@ -6,12 +6,12 @@ from .core.security import hash_password
 DEMO_PASSWORD = "password123"
 
 DEMO_USERS = [
-    ("rajini", "Rajinikanth"),
-    ("kamal", "Kamal Haasan"),
-    ("prabhas", "Prabhas"),
-    ("vijay", "Vijay"),
-    ("dhanush", "Dhanush"),
-    ("allu", "Allu Arjun"),
+    ("rajini", "Rajinikanth", "+91 98765 43210"),
+    ("kamal", "Kamal Haasan", "+91 98765 43211"),
+    ("prabhas", "Prabhas", "+91 98765 43212"),
+    ("vijay", "Vijay", "+91 98765 43213"),
+    ("dhanush", "Dhanush", "+91 98765 43214"),
+    ("allu", "Allu Arjun", "+91 98765 43215"),
 ]
 
 
@@ -20,8 +20,13 @@ def seed_if_empty(db: Session) -> None:
         return
 
     users = {}
-    for username, display_name in DEMO_USERS:
-        user = models.User(username=username, display_name=display_name, password_hash=hash_password(DEMO_PASSWORD))
+    for username, display_name, phone_number in DEMO_USERS:
+        user = models.User(
+            username=username,
+            phone_number=phone_number,
+            display_name=display_name,
+            password_hash=hash_password(DEMO_PASSWORD),
+        )
         db.add(user)
         users[username] = user
     db.flush()

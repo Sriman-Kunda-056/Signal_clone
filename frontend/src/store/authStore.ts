@@ -9,7 +9,13 @@ interface AuthState {
   user: User | null;
   hydrated: boolean;
   login: (username: string, password: string) => Promise<void>;
-  register: (username: string, displayName: string, password: string, otp: string) => Promise<void>;
+  register: (
+    phoneNumber: string,
+    username: string,
+    displayName: string,
+    password: string,
+    otp: string,
+  ) => Promise<void>;
   logout: () => void;
   setHydrated: () => void;
 }
@@ -26,8 +32,9 @@ export const useAuthStore = create<AuthState>()(
         set({ token: res.access_token, user: res.user });
       },
 
-      async register(username, displayName, password, otp) {
+      async register(phoneNumber, username, displayName, password, otp) {
         const res = await api.post<AuthResponse>("/auth/register", {
+          phone_number: phoneNumber,
           username,
           display_name: displayName,
           password,

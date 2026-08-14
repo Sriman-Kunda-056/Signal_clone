@@ -9,6 +9,7 @@ export type RequestStatus = "accepted" | "pending" | "blocked";
 export interface User {
   id: number;
   username: string;
+  phone_number: string;
   display_name: string;
   avatar_url: string | null;
   is_online: boolean;
@@ -20,6 +21,11 @@ export interface MessageStatus {
   status: MessageStatusValue;
 }
 
+export interface Reaction {
+  user_id: number;
+  emoji: string;
+}
+
 export interface Message {
   id: number;
   conversation_id: number;
@@ -28,11 +34,15 @@ export interface Message {
   // *current* participant list — so it stays correct even after the sender
   // deletes a direct chat or is removed from a group.
   sender: User;
+  // For message_type "image"/"file" this is a base64 data URL rather than
+  // plain text — see lib/attachments.ts for why (no external storage
+  // account, so attachments live in SQLite like everything else).
   content: string;
   message_type: MessageType;
   reply_to_message_id: number | null;
   created_at: string;
   statuses: MessageStatus[];
+  reactions: Reaction[];
 }
 
 export interface Participant {
@@ -59,6 +69,8 @@ export interface Conversation {
   // True only when I've accepted (or started) a direct chat and the other
   // person hasn't responded yet — never reveals a block.
   awaiting_their_response: boolean;
+  // Per-user archive shelf — independent of my_status/awaiting_their_response.
+  is_archived: boolean;
 }
 
 export interface Contact {
